@@ -1,6 +1,4 @@
-import { Tedis } from 'tedis'
-
-const db = new Tedis({ host: '127.0.0.1', port: 6379 })
+import { db } from "$lib/db/redis"
 
 export async function post({ body, locals }) {
     const userData: string | number = await db.get(body.email)

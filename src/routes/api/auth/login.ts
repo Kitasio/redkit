@@ -1,12 +1,10 @@
 import stringHash from 'string-hash'
 import * as cookie from 'cookie'
 import { v4 as uuidv4 } from 'uuid'
-import { Tedis } from 'tedis'
+import { db } from "$lib/db/redis"
 
-const db = new Tedis({host: '127.0.0.1', port: 6379})
-
-export async function post({body}) {
-    const userData: string | number = await db.get(body.email)
+export async function post(request) {
+    const userData: string | number = await db.get(request.body.email)
     let user: Object;
     typeof userData === 'string' ? user = JSON.parse(userData) : "Not a string"
 
@@ -19,7 +17,7 @@ export async function post({body}) {
         }
     }
 
-    if (user['password'] !== stringHash(body.password)) {
+    if (user['password'] !== stringHash(request.body.password)) {
         return {
             status: 401,
             body: {
@@ -28,15 +26,20 @@ export async function post({body}) {
         }
     }
 
+    const oldCookie = cookie.parse(request.headers.cookie || '')
+    if(oldCookie.session_id) {
+        db.del(oldCookie.session_id)
+    }
+
     const cookieId = uuidv4();
-    await db.set(cookieId, JSON.stringify({
-        email: body.email,
+    await db.setex(cookieId, 60*60*24, JSON.stringify({
+        email: request.body.email,
     }))
 
     const headers = {
         'Set-Cookie': cookie.serialize('session_id', cookieId, {
             httpOnly: true,
-            maxAge: 60 * 60 * 24 * 7,
+            maxAge: 60 * 60 * 24,
             sameSite: 'lax',
             path: '/'
         })
