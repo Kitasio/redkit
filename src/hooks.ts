@@ -7,10 +7,14 @@ export async function handle({ request, resolve }) {
     const cookies = parse(request.headers.cookie || '');
 
     if (cookies.session_id) {
-        const session = JSON.parse(await db.get(cookies.session_id))
+        const sessionData = await db.get(cookies.session_id)
+        let session: JSON;
+        if (typeof sessionData === 'string') {
+            session = JSON.parse(sessionData);
+        }
         if (session) {
             request.locals.authenticated = true;
-            request.locals.email = session.email;
+            request.locals.email = session['email'];
             return resolve(request)
         }
     }
